@@ -1,0 +1,109 @@
+datasource db {
+    provider = "mysql"
+    url      = env("DB_URL")
+}
+
+generator db {
+    provider = "go run github.com/steebchen/prisma-client-go"
+}
+
+model Teams {
+    id        Int          @id @default(autoincrement())
+    name      String
+    status    ActiveStatus @default(Active)
+    createdAt DateTime     @default(now()) @map("created_at")
+    updatedAt DateTime     @updatedAt @map("updated_at")
+    Cases     Cases[]
+
+    @@map("teams")
+}
+
+model Users {
+    id           Int            @id @default(autoincrement())
+    name         String
+    status       ActiveStatus   @default(Active)
+    Role         UserRole       @default(Staff)
+    createdAt    DateTime       @default(now()) @map("created_at")
+    updatedAt    DateTime       @updatedAt @map("updated_at")
+    CaseComments CaseComments[]
+
+    AuthorityCases Cases[] @relation("authority")
+    AssignCases    Cases[] @relation("assign")
+
+    @@map("users")
+}
+
+model Areas {
+    id        Int          @id @default(autoincrement())
+    name      String
+    status    ActiveStatus @default(Active)
+    createdAt DateTime     @default(now()) @map("created_at")
+    updatedAt DateTime     @updatedAt @map("updated_at")
+    cases     Cases[]
+
+    @@map("areas")
+}
+
+model Cases {
+    id                Int      @id @default(autoincrement())
+    risk              Risk     @default(Low)
+    alert             String
+    areaId            Int      @map("area_id")
+    caseAt            DateTime @map("case_at")
+    zone              String
+    camera            String
+    authorityId       Int      @map("authority_id")
+    status            Status   @default(ReviewSubmitted)
+    image             String?  @map("image")
+    assignId          Int      @map("assign_id")
+    teamId            Int      @map("team_id")
+    reviewDescription String?  @map("review_description") @db.Text
+    createdAt         DateTime @default(now()) @map("created_at")
+    updatedAt         DateTime @updatedAt @map("updated_at")
+
+    authority Users          @relation(name: "authority", fields: [authorityId], references: [id])
+    area      Areas          @relation(fields: [areaId], references: [id])
+    team      Teams          @relation(fields: [teamId], references: [id])
+    assign    Users          @relation(name: "assign", fields: [assignId], references: [id])
+    comments  CaseComments[]
+
+    @@map("cases")
+}
+
+model CaseComments {
+    id         Int      @id @default(autoincrement())
+    caseId     Int      @map("case_id")
+    message    String   @db.Text
+    userId     Int      @map("user_id")
+    attachment String?
+    createdAt  DateTime @default(now()) @map("created_at")
+    updatedAt  DateTime @updatedAt @map("updated_at")
+
+    user Users @relation(fields: [userId], references: [id])
+    case Cases @relation(fields: [caseId], references: [id])
+
+    @@map("case_comments")
+}
+
+enum Status {
+    Reopen          @map("Reopen")
+    ReviewSubmitted @map("Review Submitted")
+    InProgress      @map("In Progress")
+    Complete        @map("Completed")
+}
+
+enum Risk {
+    Low
+    Medium
+    High
+}
+
+enum ActiveStatus {
+    Active
+    Inactive
+}
+
+enum UserRole {
+    Authority
+    Staff
+}
